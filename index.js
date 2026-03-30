@@ -30,22 +30,25 @@ const findChrome = () => {
 
 // Main API Logic
 app.post('/api/extract', async (req, res) => {
-    const { url } = req.body;
-    const chromePath = findChrome();
+    // Clean URL: Remove whitespace and any accidental characters like 'v' before http
+    let cleanUrl = (url || '').trim();
+    if (cleanUrl.match(/^[^h]*http/)) {
+        cleanUrl = cleanUrl.replace(/^[^h]*/, '');
+    }
 
-    if (!url) return res.status(400).json({ success: false, error: 'URL is required' });
-    if (!chromePath) return res.status(500).json({ success: false, error: 'Google Chrome not found. Please install Chrome or specify path.' });
+    if (!cleanUrl) return res.status(400).json({ success: false, error: 'URL is required' });
+    if (!chromePath) return res.status(500).json({ success: false, error: 'Google Chrome not found.' });
 
     let browser;
     try {
         browser = await puppeteer.launch({
-            executablePath: chromePath, // Using local Chrome
+            executablePath: chromePath,
             headless: true,
             args: ['--no-sandbox', '--disable-setuid-sandbox']
         });
 
         const page = await browser.newPage();
-        await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+        await page.goto(cleanUrl, { waitUntil: 'networkidle2', timeout: 30000 });
 
         // Better Extraction logic
         const extractedData = await page.evaluate(() => {
