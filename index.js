@@ -30,17 +30,24 @@ const findChrome = () => {
 
 // Main API Logic
 app.post('/api/extract', async (req, res) => {
-    // Clean URL: Remove whitespace and any accidental characters like 'v' before http
+    const { url } = req.body;
+    const chromePath = findChrome();
+    
+    // Auto-clean the URL
     let cleanUrl = (url || '').trim();
-    if (cleanUrl.match(/^[^h]*http/)) {
-        cleanUrl = cleanUrl.replace(/^[^h]*/, '');
+    if (cleanUrl.match(/^[^h]*http/i)) {
+        cleanUrl = cleanUrl.replace(/^[^h]*/i, '');
     }
 
-    if (!cleanUrl) return res.status(400).json({ success: false, error: 'URL is required' });
-    if (!chromePath) return res.status(500).json({ success: false, error: 'Google Chrome not found.' });
+    console.log(`[INFO] Received request for: ${url}`);
+    console.log(`[INFO] Cleaned URL for processing: ${cleanUrl}`);
+
+    if (!cleanUrl) return res.status(400).json({ success: false, error: 'URL provided is empty or invalid.' });
+    if (!chromePath) return res.status(500).json({ success: false, error: 'Internal Error: Browser not configured.' });
 
     let browser;
     try {
+        console.log(`[LOG] Launching browser at ${chromePath}...`);
         browser = await puppeteer.launch({
             executablePath: chromePath,
             headless: true,
@@ -48,6 +55,8 @@ app.post('/api/extract', async (req, res) => {
         });
 
         const page = await browser.newPage();
+        console.log(`[LOG] Navigating to ${cleanUrl}...`);
+        
         await page.goto(cleanUrl, { waitUntil: 'networkidle2', timeout: 30000 });
 
         // Better Extraction logic
